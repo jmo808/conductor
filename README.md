@@ -85,6 +85,43 @@ your Claude Code session:
 /plugin install conductor
 ```
 
+### 3. Kiro (IDE & CLI)
+
+Kiro reads [Agent Skills](https://kiro.dev/docs/skills/) in the open
+`SKILL.md` standard, so Conductor's skills work as-is. Both the Kiro IDE and
+the Kiro CLI share the same on-disk skill directories, so a single install
+serves every Kiro surface.
+
+#### A. Workspace Installation (per-project, shareable with your team)
+
+Copy the skills and the Kiro UX rule into your project's `.kiro/` directory:
+
+```bash
+# From a clone of this repository:
+mkdir -p .kiro/skills .kiro/steering
+cp -R skills/* .kiro/skills/
+cp rules/conductor_kiro.md .kiro/steering/conductor-kiro.md
+```
+
+Commit `.kiro/` so the whole team shares the same workflow.
+
+#### B. Global Installation (all your projects)
+
+```bash
+mkdir -p ~/.kiro/skills ~/.kiro/steering
+cp -R skills/* ~/.kiro/skills/
+cp rules/conductor_kiro.md ~/.kiro/steering/conductor-kiro.md
+```
+
+Kiro discovers skills when a new chat session starts. Start a fresh session,
+then run `/context show` to confirm the six `conductor-*` skills are available.
+Invoke them as slash commands (`/conductor-setup`, `/conductor-new-track`, …)
+or via natural language.
+
+> Note: `rules/conductor_kiro.md` is Conductor's [steering](https://kiro.dev/docs/steering/)
+> rule for Kiro — it makes the agent render choices as Agent Focus attention-card
+> buttons (or a text menu on the CLI) and ask one question at a time.
+
 --------------------------------------------------------------------------------
 
 ## 🔄 Uninstallation
@@ -97,6 +134,9 @@ To safely remove Conductor from your environment:
     *   **Workspace Link:** Run `rm -f .agents/plugins/conductor`
 *   **Claude Code:** Run `/plugin remove conductor` and `/plugin marketplace
     remove gemini-cli-extensions/conductor`
+*   **Kiro:** Remove the copied skill folders and rule, e.g. `rm -rf
+    .kiro/skills/conductor-* .kiro/steering/conductor-kiro.md` (workspace) or the
+    same paths under `~/.kiro/` (global).
 
 --------------------------------------------------------------------------------
 
@@ -129,7 +169,7 @@ This is powered by the integrated **View Layer UX Adapter**:
     dialog elements, Conductor will automatically capture selections, decision
     interviews, and track options as native graphical modal dialog windows.
     *   `rules/`: Custom adapter rules tailored for visual IDE environments
-        (like Antigravity).
+        (like Antigravity, or Kiro IDE's Agent Focus attention-card buttons).
 *   **Graceful CLI Fallback:** If you are operating in a plain text terminal
     console (such as Claude Code), Conductor automatically detects the console
     environment and adapts all interactive steps into clean, structured
@@ -299,7 +339,8 @@ corresponding Conductor protocol in the background:
 ## 📂 Repository Structure
 
 -   `/skills`: The protocol logic (`SKILL.md`) for each command.
--   `/rules`: Platform-specific operational rules files.
+-   `/rules`: Platform-specific operational rules files (e.g.
+    `conductor_antigravity.md` for Antigravity, `conductor_kiro.md` for Kiro).
 
 --------------------------------------------------------------------------------
 
