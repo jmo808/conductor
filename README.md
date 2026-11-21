@@ -208,7 +208,19 @@ unit of work. Conductor helps you generate two critical artifacts:
 
 Once you approve the plan, run `/conductor:conductor-implement`. Your coding
 agent then works through the `plan.md` file, checking off tasks as it completes
-them.
+them. For projects integrated with software-factory, Conductor writes and runs
+the failing tests itself, confirms the Red phase, and synchronously hands each
+eligible Green implementation task to `factory handoff run`. Local projects use
+the Goose/Ollama local-first route in
+`examples/routing.local-first.yaml`; any hosted fallback remains controlled by
+that routing file.
+
+Conductor remains responsible for progress and status inspection, phase and
+manual verification, Git notes, checkpoints, plan and registry updates, and
+finalization. Factory handoffs cannot edit `plan.md`, and Conductor preserves
+the workflow's approval boundaries: it does not auto-tag plans, mark tasks from
+factory output without the required confirmation, or push/open a PR unless
+explicitly requested. The handoff command always runs in the foreground.
 
 **Updated Artifacts:**
 
