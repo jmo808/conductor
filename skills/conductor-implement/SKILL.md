@@ -2,7 +2,7 @@
 name: conductor-implement
 description: Executes the tasks defined in the specified track's plan. Use this to start or continue working on a feature, bug fix, or chore.
 metadata:
-  version: "1.0"
+  version: "1.3"
 ---
 
 # Conductor Implement Skill
@@ -84,7 +84,31 @@ Adhere to this sequence to execute the selected track.
     -   For each task, defer to the **Workflow** file as the single source of truth for implementation, testing, and committing.
     -   Ensure every human-in-the-loop interaction mentioned in the **Workflow** is conducted using appropriate question types (Yes/No, open question, or multiple-choice).
 
-5.  **Finalize Track:**
+5.  **Software-Factory Integration (When Present):**
+    -   Detect integration before starting the first task. A project is integrated when it has a `factory.yaml` or the project documentation identifies software-factory support. Resolve `FACTORY_HOME` from the environment (or the documented installation location), and verify the `factory` command and the selected routing file are available before relying on the integration.
+    -   **Hybrid Local/Antigravity Default:** For an integrated project, default to the hybrid routing file:
+
+        ```bash
+        "$FACTORY_HOME/examples/routing.hybrid.yaml"
+        ```
+
+        This route handles draft coding locally via Ollama (`qwen3:14b`) with ordered Antigravity fallbacks (`agy:gemini-3.8-flash-low` -> `agy:gemini-4-neon-high`), runs inner review on `agy:claude-sonnet-5-5-medium`, and reserves adversarial `copilot:mai-code-2` (`high`) for a single final review gate with `--max-credits 30`. Inspect the selected routing file to understand its tier behavior, and do not hard-code a provider outside the routing configuration. Alternative routing files (`routing.local-first.yaml`, `routing.antigravity-first.yaml`, or `routing.yaml`) are allowed only when explicitly selected by the project or user.
+    -   **Ownership Boundary:** Software-factory performs only the eligible Green implementation handoff. Conductor owns and must execute all Red-phase work, test execution and verification, heartbeats/status inspection, phase/manual verification, Git notes, checkpoints, implementation-plan updates, registry updates, and finalization. Never delegate these Conductor responsibilities to the factory.
+    -   **Red Before Green:** For every task, Conductor must write the failing test(s), run the exact project test command, and confirm the expected failure before beginning implementation. A Green handoff is forbidden until the Red phase is observed and the result is attributable to the intended missing behavior rather than a broken environment or unrelated failure.
+    -   **Green Eligibility:** A task is eligible for factory handoff only when all of the following are true:
+        -   It is a self-contained Green implementation task with test-verifiable acceptance criteria.
+        -   It does not require user judgment, secrets, production access, or design decisions during execution.
+        -   The Red phase has passed (tests fail for the intended reason).
+        -   Factory delegation is already approved by the user, for example through an approved `[factory]` plan task or a user-approved handoff decision.
+        -   Running it will not require the factory to edit the implementation plan or perform Conductor-owned verification/finalization.
+    -   **Approval Boundary:** Do not auto-tag or otherwise rewrite `plan.md` to make a task eligible. If a task is not already approved for handoff, present the handoff and await explicit user approval before tagging it or invoking the factory. Never infer approval to change the plan, push, open a PR, access production, or perform irreversible actions.
+    -   **Mandatory Synchronous Handoff:** Hand off each eligible Green task through `factory handoff run` (or `factory fleet run` when dispatching multiple independent exported `[factory]` tasks together). Run it directly in the foreground from the target repository root and wait for terminal completion in the same command. Invoke the installed command's help, if necessary, to construct the repository version-specific arguments, but preserve `factory handoff run` (or `factory fleet run`), pass `--routing-file "$FACTORY_HOME/examples/routing.hybrid.yaml"` (unless an explicit override was selected) and `--max-credits 30`, and explicitly pass the target repository's current branch as `--base "$(git branch --show-current)"` (or an equivalent branch value resolved from that same checkout immediately before invocation). Passing `--base` is mandatory because the default base is `main`; omitting `--base` makes the factory start from `main` and prevents it from seeing Conductor's committed Red tests on the feature branch. Verify that the resolved branch is non-empty and is not the project default branch before handing off a feature-branch task. **Never use `factory run`, omit the branch base, run with a mismatched base, perform background execution, `&`, `nohup`, `disown`, terminal detachment, or an asynchronous job for this handoff.**
+    -   **Progress and Result Protocol:** Treat `FACTORY_PROGRESS` as durable heartbeat state and retain exactly one `FACTORY_RESULT` for the attempt. Conductor must inspect and report progress/status using `factory handoff status` (or `factory fleet status` for fleet runs); if a synchronous command is interrupted, inspect the durable loop state and resume or retry only through a new synchronous `factory handoff run`. Do not start a second attempt while a loop is active, discard the progress record, or manufacture a result.
+    -   **Result Reconciliation:** Read the single `FACTORY_RESULT`, inspect the resulting work and diff, and run the project's Green verification yourself. A completed factory status or result is not sufficient to mark the task complete. If it failed, leave the task open and either report the blocker or create a narrowly scoped correction only within the already-approved task; if the correction changes scope or the plan, stop for user approval.
+    -   **Plan Integrity (Critical):** The factory MUST NOT edit `plan.md` or the tracks registry. Conductor may update only the status/checkpoint fields prescribed by the existing workflow, and only after the user approval or confirmation required by that workflow. Never treat a `FACTORY_RESULT` as automatic permission to mark a task complete or to edit the plan.
+    -   **No PR or Push by Default:** Do not pass `--open-pr`, push, or publish remote state unless the user explicitly requests that action. Factory handoff for ordinary implementation runs locally in the isolated worktree.
+
+6.  **Finalize Track:**
     -   After all tasks are completed, update the track status to `[x]` in the **Tracks Registry**.
     -   Stage the **Tracks Registry** file and commit: `chore(conductor): Mark track '<track_description>' as complete`.
     -   Announce that the track is fully complete.
