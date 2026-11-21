@@ -213,7 +213,10 @@ the failing tests itself, confirms the Red phase, and synchronously hands each
 eligible Green implementation task to `factory handoff run`. Local projects use
 the Goose/Ollama local-first route in
 `examples/routing.local-first.yaml`; any hosted fallback remains controlled by
-that routing file.
+that routing file. Because `factory handoff run` defaults its base to `main`,
+Conductor must pass the target repository's current feature branch with
+`--base "$(git branch --show-current)"` (or an explicitly resolved equivalent).
+This ensures the handoff starts from the committed Red tests instead of `main`.
 
 Conductor remains responsible for progress and status inspection, phase and
 manual verification, Git notes, checkpoints, plan and registry updates, and
